@@ -1,0 +1,663 @@
+import React, { useState, useEffect } from 'react';
+
+// Define scoring tables from the G20 document
+const factorScores = {
+  'knowledge': { 5: { 3: 1000, 2: 870, 1: 756 }, 4: { 3: 658, 2: 572, 1: 497 }, 3: { 3: 432, 2: 376, 1: 327 }, 2: { 3: 284, 2: 247, 1: 215 }, 1: { 3: 187, 2: 163, 1: 141 } },
+  'experience': { 5: { 3: 1000, 2: 870, 1: 756 }, 4: { 3: 658, 2: 572, 1: 497 }, 3: { 3: 432, 2: 376, 1: 327 }, 2: { 3: 284, 2: 247, 1: 215 }, 1: { 3: 187, 2: 163, 1: 141 } },
+  'skills': { 5: { 3: 800, 2: 696, 1: 605 }, 4: { 3: 526, 2: 457, 1: 398 }, 3: { 3: 346, 2: 301, 1: 262 }, 2: { 3: 227, 2: 198, 1: 172 }, 1: { 3: 150, 2: 130, 1: 113 } },
+  'hr_responsibility': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'financial_responsibility': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'physical_resources_responsibility': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'reports_responsibility': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'communication_responsibility': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'regulations_responsibility': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'hsee_responsibility': { 5: { 3: 200, 2: 173, 1: 151 }, 4: { 3: 131, 2: 114, 1: 99 }, 3: { 3: 86, 2: 75, 1: 65 }, 2: { 3: 57, 2: 49, 1: 43 }, 1: { 3: 37, 2: 32, 1: 28 } },
+  'autonomy': { 5: { 3: 1000, 2: 870, 1: 756 }, 4: { 3: 658, 2: 572, 1: 497 }, 3: { 3: 432, 2: 376, 1: 327 }, 2: { 3: 284, 2: 247, 1: 215 }, 1: { 3: 187, 2: 163, 1: 141 } },
+  'problem_solving_creativity': { 5: { 3: 1000, 2: 870, 1: 756 }, 4: { 3: 658, 2: 572, 1: 497 }, 3: { 3: 432, 2: 376, 1: 327 }, 2: { 3: 284, 2: 247, 1: 215 }, 1: { 3: 187, 2: 163, 1: 141 } },
+  'accountability': { 5: { 3: 1000, 2: 870, 1: 756 }, 4: { 3: 658, 2: 572, 1: 497 }, 3: { 3: 432, 2: 376, 1: 327 }, 2: { 3: 284, 2: 247, 1: 215 }, 1: { 3: 187, 2: 163, 1: 141 } },
+  'special_responsibility': { 5: { 3: 100, 2: 87, 1: 75 }, 4: { 3: 66, 2: 57, 1: 50 }, 3: { 3: 43, 2: 38, 1: 33 }, 2: { 3: 28, 2: 24, 1: 21 }, 1: { 3: 18, 2: 16, 1: 14 } },
+  'intellectual_effort': { 5: { 3: 600, 2: 522, 1: 454 }, 4: { 3: 394, 2: 344, 1: 298 }, 3: { 3: 260, 2: 226, 1: 196 }, 2: { 3: 170, 2: 148, 1: 128 }, 1: { 3: 112, 2: 98, 1: 84 } },
+  'emotional_effort': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'physical_effort': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'work_hazards': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'unfavorable_conditions': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+  'stress_unusual_conditions': { 5: { 3: 300, 2: 261, 1: 227 }, 4: { 3: 197, 2: 172, 1: 149 }, 3: { 3: 130, 2: 113, 1: 98 }, 2: { 3: 85, 2: 74, 1: 64 }, 1: { 3: 56, 2: 49, 1: 42 } },
+};
+
+// Grade mapping from Table 24
+const gradeRanges = [
+  { grade: '1', min: 3000, max: 3100 }, { grade: '2', min: 3101, max: 3255 }, { grade: '3', min: 3256, max: 3418 },
+  { grade: '4', min: 3419, max: 3589 }, { grade: '5', min: 3590, max: 3768 }, { grade: '6', min: 3769, max: 3956 },
+  { grade: '7', min: 3957, max: 4154 }, { grade: '8', min: 4155, max: 4362 }, { grade: '9', min: 4363, max: 4580 },
+  { grade: '10', min: 4581, max: 4809 }, { grade: '11', min: 4810, max: 5050 }, { grade: '12', min: 5051, max: 5302 },
+  { grade: '13', min: 5303, max: 5567 }, { grade: '14', min: 5568, max: 5846 }, { grade: '15', min: 5847, max: 6138 },
+  { grade: '16', min: 6139, max: 6445 }, { grade: '17', min: 6446, max: 6767 }, { grade: '18', min: 6768, max: 7105 },
+  { grade: '19', min: 7106, max: 7461 }, { grade: '20', min: 7462, max: 7834 }, { grade: '21 (A)', min: 7835, max: 8225 },
+  { grade: '22 (B)', min: 8226, max: 8636 }, { grade: '23 (C)', min: 8637, max: 9068 }, { grade: '24 (D)', min: 9069, max: 9522 },
+  { grade: '25 (E)', min: 9523, max: 10000 },
+];
+
+const factorDefinitions = {
+  'knowledge': { name: 'دانش مورد نیاز شغل', maxScore: 1000, category: 'intellectual' },
+  'experience': { name: 'حوزه‌های تجربی شغل', maxScore: 1000, category: 'intellectual' },
+  'skills': { name: 'مهارت‌های مورد نیاز شغل', maxScore: 800, category: 'intellectual' },
+  'hr_responsibility': { name: 'مسئولیت منابع انسانی', maxScore: 300, category: 'managerial' },
+  'financial_responsibility': { name: 'مسئولیت منابع مالی', maxScore: 300, category: 'managerial' },
+  'physical_resources_responsibility': { name: 'مسئولیت منابع فیزیکی', maxScore: 300, category: 'routine' },
+  'reports_responsibility': { name: 'مسئولیت فرم‌ها و گزارشات', maxScore: 300, category: 'managerial' },
+  'communication_responsibility': { name: 'مسئولیت تماس و ارتباط با درون و بیرون سازمان', maxScore: 300, category: 'managerial' },
+  'regulations_responsibility': { name: 'مسئولیت مقررات، روش‌ها و سیستم‌ها و استانداردها', maxScore: 300, category: 'managerial' },
+  'hsee_responsibility': { name: 'مسئولیت بهداشت روانشناختی، محیط داخلی و ارگونومی', maxScore: 200, category: 'routine' },
+  'autonomy': { name: 'استقلال و آزادی عمل در تصمیم‌گیری', maxScore: 1000, category: 'strategic' },
+  'problem_solving_creativity': { name: 'حل مسئله و خلاقیت', maxScore: 1000, category: 'strategic' },
+  'accountability': { name: 'پاسخگویی در برابر پیامدهای تصمیمات', maxScore: 1000, category: 'strategic' },
+  'special_responsibility': { name: 'مسئولیت خاص', maxScore: 100, category: 'managerial' },
+  'intellectual_effort': { name: 'کوشش فکری، دقت و تمرکز حواس', maxScore: 600, category: 'intellectual' },
+  'emotional_effort': { name: 'کوشش احساسی', maxScore: 300, category: 'intellectual' },
+  'physical_effort': { name: 'کوشش جسمانی', maxScore: 300, category: 'physical' },
+  'work_hazards': { name: 'خطرات ناشی از کار و سطح ریسک', maxScore: 300, category: 'environmental' },
+  'unfavorable_conditions': { name: 'شرایط نامساعد محیط کار', maxScore: 300, category: 'environmental' },
+  'stress_unusual_conditions': { name: 'استرس و سایر شرایط غیرعادی کار', maxScore: 300, category: 'environmental' },
+};
+
+// Categories for consistency check (based on Table 25 logic)
+const intellectualStrategicFactors = [
+  'knowledge', 'experience', 'skills', 'hr_responsibility', 'financial_responsibility',
+  'reports_responsibility', 'communication_responsibility', 'regulations_responsibility',
+  'autonomy', 'problem_solving_creativity', 'accountability', 'special_responsibility',
+  'intellectual_effort', 'emotional_effort'
+];
+const physicalEnvironmentalRoutineFactors = [
+  'physical_resources_responsibility', 'hsee_responsibility', 'physical_effort',
+  'work_hazards', 'unfavorable_conditions', 'stress_unusual_conditions'
+];
+
+const App = () => {
+  const [jobTitleInput, setJobTitleInput] = useState('');
+  const [jobInfo, setJobInfo] = useState({
+    title: '',
+    unit: '',
+    supervisor: '',
+    objective: '',
+  });
+
+  const [factorInputs, setFactorInputs] = useState(() => {
+    const initialInputs = {};
+    for (const key in factorDefinitions) {
+      initialInputs[key] = {
+        complexity: '',
+        frequency: '',
+        justification: '',
+        score: 0,
+      };
+    }
+    return initialInputs;
+  });
+
+  const [totalScore, setTotalScore] = useState(0);
+  const [jobGrade, setJobGrade] = useState('');
+  const [consistencyWarnings, setConsistencyWarnings] = useState([]);
+  const [showResults, setShowResults] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [aiRetrievalError, setAiRetrievalError] = useState('');
+
+  const handleChangeJobInfo = (e) => {
+    const { name, value } = e.target;
+    setJobInfo(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleChangeFactorInput = (factorKey, type, value) => {
+    setFactorInputs(prev => ({
+      ...prev,
+      [factorKey]: {
+        ...prev[factorKey],
+        [type]: value,
+      },
+    }));
+  };
+
+  const calculateFactorScore = (factorKey, complexity, frequency) => {
+    if (factorScores[factorKey] && factorScores[factorKey][complexity] && factorScores[factorKey][complexity][frequency]) {
+      return factorScores[factorKey][complexity][frequency];
+    }
+    return 0;
+  };
+
+  const fetchJobInfoFromAI = async () => {
+    setIsLoading(true);
+    setAiRetrievalError('');
+    setShowResults(false); // Hide previous results
+
+    try {
+      // Step 1: Search for job description snippets
+      const searchPrompt = `Job description for ${jobTitleInput} in Persian and English.`;
+      let chatHistorySearch = [{ role: "user", parts: [{ text: searchPrompt }] }];
+      const searchPayload = { contents: chatHistorySearch };
+      const apiKey = ""; // Canvas will provide this
+      const searchApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+      const searchResponse = await fetch(searchApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchPayload)
+      });
+      const searchResult = await searchResponse.json();
+
+      if (!searchResult.candidates || searchResult.candidates.length === 0 || !searchResult.candidates[0].content || !searchResult.candidates[0].content.parts || searchResult.candidates[0].content.parts.length === 0) {
+        throw new Error('No search results found from AI.');
+      }
+
+      const searchSnippets = searchResult.candidates[0].content.parts[0].text;
+
+      // Step 2: Use AI to structure the data into the desired format
+      const extractionPrompt = `Based on the following job title and search snippets, extract and infer the job information and factor inputs in the exact JSON format provided. For complexity (1-5) and frequency (1-3), infer based on the job responsibilities and requirements. Provide a concise justification for each factor. If information is not explicitly available, make a reasonable inference based on typical roles for "${jobTitleInput}" and state it in the justification. All justifications and text should be in Persian.
+
+Job Title: ${jobTitleInput}
+
+Search Snippets:
+${searchSnippets}
+
+JSON Output Format:
+{
+  "jobInfo": {
+    "title": "string",
+    "unit": "string",
+    "supervisor": "string",
+    "objective": "string"
+  },
+  "factorInputs": {
+    "knowledge": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "experience": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "skills": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "hr_responsibility": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "financial_responsibility": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "physical_resources_responsibility": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "reports_responsibility": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "communication_responsibility": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "regulations_responsibility": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "hsee_responsibility": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "autonomy": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "problem_solving_creativity": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "accountability": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "special_responsibility": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "intellectual_effort": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "emotional_effort": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "physical_effort": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "work_hazards": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "unfavorable_conditions": { "complexity": "string", "frequency": "string", "justification": "string" },
+    "stress_unusual_conditions": { "complexity": "string", "frequency": "string", "justification": "string" }
+  }
+}`;
+
+      let chatHistoryExtraction = [{ role: "user", parts: [{ text: extractionPrompt }] }];
+      const extractionPayload = {
+        contents: chatHistoryExtraction,
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              "jobInfo": {
+                type: "OBJECT",
+                properties: {
+                  "title": { "type": "STRING" },
+                  "unit": { "type": "STRING" },
+                  "supervisor": { "type": "STRING" },
+                  "objective": { "type": "STRING" }
+                }
+              },
+              "factorInputs": {
+                type: "OBJECT",
+                properties: Object.fromEntries(
+                  Object.keys(factorDefinitions).map(key => [
+                    key,
+                    {
+                      type: "OBJECT",
+                      properties: {
+                        "complexity": { "type": "STRING" },
+                        "frequency": { "type": "STRING" },
+                        "justification": { "type": "STRING" }
+                      }
+                    }
+                  ])
+                )
+              }
+            }
+          }
+        }
+      };
+
+      const extractionApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const extractionResponse = await fetch(extractionApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(extractionPayload)
+      });
+      const extractionResult = await extractionResponse.json();
+
+      if (extractionResult.candidates && extractionResult.candidates.length > 0 &&
+          extractionResult.candidates[0].content && extractionResult.candidates[0].content.parts &&
+          extractionResult.candidates[0].content.parts.length > 0) {
+        const jsonText = extractionResult.candidates[0].content.parts[0].text;
+        const parsedData = JSON.parse(jsonText);
+
+        setJobInfo(parsedData.jobInfo);
+        // Ensure factorInputs are correctly formatted as strings for select elements
+        const formattedFactorInputs = {};
+        for (const key in parsedData.factorInputs) {
+          formattedFactorInputs[key] = {
+            complexity: String(parsedData.factorInputs[key].complexity),
+            frequency: String(parsedData.factorInputs[key].frequency),
+            justification: parsedData.factorInputs[key].justification,
+            score: 0 // Score will be calculated later
+          };
+        }
+        setFactorInputs(formattedFactorInputs);
+      } else {
+        throw new Error('Failed to extract structured job information from AI.');
+      }
+
+    } catch (error) {
+      console.error("Error fetching job info from AI:", error);
+      setAiRetrievalError('خطا در دریافت اطلاعات شغل از هوش مصنوعی. لطفاً عنوان شغل را دقیق‌تر وارد کنید یا بعداً امتحان کنید.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const performCalculations = () => {
+    const newErrors = {};
+    let allInputsValid = true;
+
+    // Validate all inputs
+    for (const key in factorInputs) {
+      if (!factorInputs[key].complexity || !factorInputs[key].frequency || !factorInputs[key].justification) {
+        newErrors[key] = 'تمام فیلدهای پیچیدگی، فراوانی و توجیه باید پر شوند.';
+        allInputsValid = false;
+      }
+    }
+
+    if (!jobInfo.title || !jobInfo.unit || !jobInfo.supervisor || !jobInfo.objective) {
+      newErrors.jobInfo = 'تمام فیلدهای مشخصات کلی شغل باید پر شوند.';
+      allInputsValid = false;
+    }
+
+    setErrors(newErrors);
+
+    if (!allInputsValid) {
+      setShowResults(false);
+      return;
+    }
+
+    let currentTotalScore = 0;
+    const updatedFactorInputs = { ...factorInputs };
+
+    for (const key in factorInputs) {
+      const score = calculateFactorScore(
+        key,
+        parseInt(factorInputs[key].complexity),
+        parseInt(factorInputs[key].frequency)
+      );
+      updatedFactorInputs[key].score = score;
+      currentTotalScore += score;
+    }
+
+    setFactorInputs(updatedFactorInputs);
+    setTotalScore(currentTotalScore);
+    determineJobGrade(currentTotalScore);
+    performConsistencyCheck(updatedFactorInputs);
+    setShowResults(true);
+  };
+
+  const determineJobGrade = (score) => {
+    for (const range of gradeRanges) {
+      if (score >= range.min && score <= range.max) {
+        setJobGrade(range.grade);
+        return;
+      }
+    }
+    setJobGrade('نامشخص');
+  };
+
+  const performConsistencyCheck = (currentFactorInputs) => {
+    const warnings = [];
+
+    let highIntellectualStrategic = false;
+    let highPhysicalEnvironmentalRoutine = false;
+
+    for (const factorKey of intellectualStrategicFactors) {
+      if (currentFactorInputs[factorKey].complexity === '5' && currentFactorInputs[factorKey].frequency === '3') {
+        highIntellectualStrategic = true;
+      }
+    }
+
+    for (const factorKey of physicalEnvironmentalRoutineFactors) {
+      if (currentFactorInputs[factorKey].complexity === '5' && currentFactorInputs[factorKey].frequency === '3') {
+        highPhysicalEnvironmentalRoutine = true;
+      }
+    }
+
+    if (highIntellectualStrategic && highPhysicalEnvironmentalRoutine) {
+      warnings.push({
+        type: 'Severe',
+        message: 'ناسازگاری شدید: یک شغل نمی‌تواند همزمان نیاز به دانش و پیچیدگی بسیار بالا و همچنین کوشش جسمانی/محیطی بسیار سنگین و مداوم داشته باشد. لطفاً ارزیابی خود را بازبینی کنید.',
+      });
+    } else {
+      let moderateIntellectualStrategic = false;
+      let moderatePhysicalEnvironmentalRoutine = false;
+
+      for (const factorKey of intellectualStrategicFactors) {
+        const complexity = parseInt(currentFactorInputs[factorKey].complexity);
+        const frequency = parseInt(currentFactorInputs[factorKey].frequency);
+        if ((complexity === 4 || complexity === 5) && (frequency === 2 || frequency === 3)) {
+          moderateIntellectualStrategic = true;
+        }
+      }
+
+      for (const factorKey of physicalEnvironmentalRoutineFactors) {
+        const complexity = parseInt(currentFactorInputs[factorKey].complexity);
+        const frequency = parseInt(currentFactorInputs[factorKey].frequency);
+        if ((complexity === 4 || complexity === 5) && (frequency === 2 || frequency === 3)) {
+          moderatePhysicalEnvironmentalRoutine = true;
+        }
+      }
+
+      if (moderateIntellectualStrategic && moderatePhysicalEnvironmentalRoutine && !highIntellectualStrategic && !highPhysicalEnvironmentalRoutine) {
+        warnings.push({
+          type: 'Moderate',
+          message: 'ناسازگاری متوسط: به نظر می‌رسد شغل همزمان دارای الزامات فکری/استراتژیک و جسمانی/محیطی بالایی است. توصیه می‌شود ارزیابی خود را با دقت بیشتری بازبینی کنید.',
+        });
+      }
+    }
+
+    setConsistencyWarnings(warnings);
+  };
+
+  const renderFactorInput = (factorKey) => {
+    const definition = factorDefinitions[factorKey];
+    const maxScore = definition.maxScore;
+    const currentScore = factorInputs[factorKey].score;
+    const error = errors[factorKey];
+
+    return (
+      <div key={factorKey} className="bg-white p-6 rounded-xl shadow-md mb-6 border border-gray-200">
+        <h3 className="text-xl font-semibold text-gray-800 mb-4">{definition.name} (حداکثر {maxScore} امتیاز)</h3>
+        {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              سطح پیچیدگی (1-5):
+            </label>
+            <select
+              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${error ? 'border-red-500' : ''}`}
+              value={factorInputs[factorKey].complexity}
+              onChange={(e) => handleChangeFactorInput(factorKey, 'complexity', e.target.value)}
+            >
+              <option value="">انتخاب کنید</option>
+              {[1, 2, 3, 4, 5].map(level => (
+                <option key={level} value={level}>{level}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              سطح فراوانی (1-3):
+            </label>
+            <select
+              className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline ${error ? 'border-red-500' : ''}`}
+              value={factorInputs[factorKey].frequency}
+              onChange={(e) => handleChangeFactorInput(factorKey, 'frequency', e.target.value)}
+            >
+              <option value="">انتخاب کنید</option>
+              {[1, 2, 3].map(level => (
+                <option key={level} value={level}>{level}</option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-1 flex items-center justify-center">
+            <p className="text-lg font-bold text-blue-600">امتیاز: {currentScore}</p>
+          </div>
+        </div>
+        <div>
+          <label className="block text-gray-700 text-sm font-bold mb-2">
+            توضیح مستدل:
+          </label>
+          <textarea
+            className={`shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-24 ${error ? 'border-red-500' : ''}`}
+            value={factorInputs[factorKey].justification}
+            onChange={(e) => handleChangeFactorInput(factorKey, 'justification', e.target.value)}
+            placeholder="توضیح دهید چرا این سطوح را انتخاب کرده‌اید..."
+          />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="font-sans bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen p-8">
+      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-8">
+        <h1 className="text-4xl font-extrabold text-center text-indigo-800 mb-10">
+          سیستم گریدبندی شغل (مدل G20)
+        </h1>
+
+        {/* Job Title Input for AI Retrieval */}
+        <div className="bg-blue-50 p-6 rounded-xl shadow-inner mb-8">
+          <h2 className="text-2xl font-bold text-blue-700 mb-6">دریافت اطلاعات شغل از هوش مصنوعی</h2>
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            <div className="flex-grow w-full">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                عنوان شغل را وارد کنید:
+              </label>
+              <input
+                type="text"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                value={jobTitleInput}
+                onChange={(e) => setJobTitleInput(e.target.value)}
+                placeholder="مثال: مدیر طرح و برنامه"
+              />
+            </div>
+            <button
+              onClick={fetchJobInfoFromAI}
+              className="mt-6 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transform transition duration-300 hover:scale-105 flex items-center justify-center"
+              disabled={isLoading || !jobTitleInput.trim()}
+            >
+              {isLoading ? (
+                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                'دریافت اطلاعات شغل از هوش مصنوعی'
+              )}
+            </button>
+          </div>
+          {aiRetrievalError && <p className="text-red-500 text-sm mt-4">{aiRetrievalError}</p>}
+        </div>
+
+        {/* Job General Information */}
+        <div className="bg-indigo-50 p-6 rounded-xl shadow-inner mb-8">
+          <h2 className="text-2xl font-bold text-indigo-700 mb-6">الف. مشخصات کلی شغل</h2>
+          {errors.jobInfo && <p className="text-red-500 text-sm mb-4">{errors.jobInfo}</p>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                عنوان شغل:
+              </label>
+              <input
+                type="text"
+                name="title"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                value={jobInfo.title}
+                onChange={handleChangeJobInfo}
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                واحد سازمانی:
+              </label>
+              <input
+                type="text"
+                name="unit"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                value={jobInfo.unit}
+                onChange={handleChangeJobInfo}
+                disabled={isLoading}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                شغل مافوق:
+              </label>
+              <input
+                type="text"
+                name="supervisor"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                value={jobInfo.supervisor}
+                onChange={handleChangeJobInfo}
+                disabled={isLoading}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                هدف کلی شغل:
+              </label>
+              <textarea
+                name="objective"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-24"
+                value={jobInfo.objective}
+                onChange={handleChangeJobInfo}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Factor Evaluation */}
+        <h2 className="text-2xl font-bold text-indigo-700 mb-6">ب. ارزیابی عوامل شغل</h2>
+
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 mt-8">1. الزامات دانشی</h3>
+        {renderFactorInput('knowledge')}
+        {renderFactorInput('experience')}
+        {renderFactorInput('skills')}
+
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 mt-8">2. اختیارات و مسئولیت‌ها</h3>
+        {renderFactorInput('hr_responsibility')}
+        {renderFactorInput('financial_responsibility')}
+        {renderFactorInput('physical_resources_responsibility')}
+        {renderFactorInput('reports_responsibility')}
+        {renderFactorInput('communication_responsibility')}
+        {renderFactorInput('regulations_responsibility')}
+        {renderFactorInput('hsee_responsibility')}
+        {renderFactorInput('autonomy')}
+        {renderFactorInput('problem_solving_creativity')}
+        {renderFactorInput('accountability')}
+        {renderFactorInput('special_responsibility')}
+
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 mt-8">3. کوشش‌ها</h3>
+        {renderFactorInput('intellectual_effort')}
+        {renderFactorInput('emotional_effort')}
+        {renderFactorInput('physical_effort')}
+
+        <h3 className="text-xl font-semibold text-gray-800 mb-4 mt-8">4. شرایط کار</h3>
+        {renderFactorInput('work_hazards')}
+        {renderFactorInput('unfavorable_conditions')}
+        {renderFactorInput('stress_unusual_conditions')}
+
+        {/* Calculate Button */}
+        <div className="flex justify-center mt-10">
+          <button
+            onClick={performCalculations}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition duration-300 hover:scale-105"
+            disabled={isLoading}
+          >
+            محاسبه گرید شغل
+          </button>
+        </div>
+
+        {/* Results Display */}
+        {showResults && (
+          <div className="mt-12 bg-green-50 p-8 rounded-2xl shadow-xl border-2 border-green-300">
+            <h2 className="text-3xl font-bold text-green-800 mb-6 text-center">نتایج ارزیابی گرید شغلی</h2>
+
+            {consistencyWarnings.length > 0 && (
+              <div className="mb-6 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md">
+                <p className="font-bold">هشدارهای ناسازگاری:</p>
+                <ul className="list-disc list-inside">
+                  {consistencyWarnings.map((warning, index) => (
+                    <li key={index} className={warning.type === 'Severe' ? 'text-red-600' : ''}>
+                      {warning.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="text-center mb-6">
+              <p className="text-xl font-semibold text-gray-700">امتیاز کل شغل:</p>
+              <p className="text-5xl font-extrabold text-indigo-700 mt-2">{totalScore}</p>
+              <p className="text-xl font-semibold text-gray-700 mt-4">گرید شغلی تعیین شده:</p>
+              <p className="text-5xl font-extrabold text-indigo-700 mt-2">{jobGrade}</p>
+            </div>
+
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">خلاصه امتیازات عوامل اصلی:</h3>
+            <div className="overflow-x-auto mb-6">
+              <table className="min-w-full bg-white rounded-lg shadow-md">
+                <thead>
+                  <tr className="bg-indigo-100 text-indigo-800 uppercase text-sm leading-normal">
+                    <th className="py-3 px-6 text-left rounded-tl-lg">عامل اصلی</th>
+                    <th className="py-3 px-6 text-center">حداکثر امتیاز</th>
+                    <th className="py-3 px-6 text-center rounded-tr-lg">امتیاز کسب شده</th>
+                  </tr>
+                </thead>
+                <tbody className="text-gray-700 text-sm font-light">
+                  <tr className="border-b border-gray-200 hover:bg-gray-100">
+                    <td className="py-3 px-6 text-left whitespace-nowrap">الف ـ الزامات دانشی</td>
+                    <td className="py-3 px-6 text-center">2800</td>
+                    <td className="py-3 px-6 text-center">{factorInputs.knowledge.score + factorInputs.experience.score + factorInputs.skills.score}</td>
+                  </tr>
+                  <tr className="border-b border-gray-200 hover:bg-gray-100">
+                    <td className="py-3 px-6 text-left whitespace-nowrap">ب ـ اختیارات و مسئولیت‌ها</td>
+                    <td className="py-3 px-6 text-center">5100</td>
+                    <td className="py-3 px-6 text-center">{factorInputs.hr_responsibility.score + factorInputs.financial_responsibility.score + factorInputs.physical_resources_responsibility.score + factorInputs.reports_responsibility.score + factorInputs.communication_responsibility.score + factorInputs.regulations_responsibility.score + factorInputs.hsee_responsibility.score + factorInputs.autonomy.score + factorInputs.problem_solving_creativity.score + factorInputs.accountability.score + factorInputs.special_responsibility.score}</td>
+                  </tr>
+                  <tr className="border-b border-gray-200 hover:bg-gray-100">
+                    <td className="py-3 px-6 text-left whitespace-nowrap">ج ـ کوشش‌ها</td>
+                    <td className="py-3 px-6 text-center">1200</td>
+                    <td className="py-3 px-6 text-center">{factorInputs.intellectual_effort.score + factorInputs.emotional_effort.score + factorInputs.physical_effort.score}</td>
+                  </tr>
+                  <tr className="border-b border-gray-200 hover:bg-gray-100">
+                    <td className="py-3 px-6 text-left whitespace-nowrap">د ـ شرایط کار</td>
+                    <td className="py-3 px-6 text-center">900</td>
+                    <td className="py-3 px-6 text-center">{factorInputs.work_hazards.score + factorInputs.unfavorable_conditions.score + factorInputs.stress_unusual_conditions.score}</td>
+                  </tr>
+                  <tr className="bg-indigo-50 font-bold text-indigo-900">
+                    <td className="py-3 px-6 text-left rounded-bl-lg">جمع کل</td>
+                    <td className="py-3 px-6 text-center">10000</td>
+                    <td className="py-3 px-6 text-center rounded-br-lg">{totalScore}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="text-2xl font-bold text-gray-800 mb-4">جزئیات امتیازات هر عامل:</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.keys(factorDefinitions).map(factorKey => (
+                <div key={factorKey} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200">
+                  <p className="font-semibold text-gray-800">{factorDefinitions[factorKey].name}:</p>
+                  <p className="text-gray-600">امتیاز: {factorInputs[factorKey].score}</p>
+                  <p className="text-gray-600">پیچیدگی: {factorInputs[factorKey].complexity}</p>
+                  <p className="text-gray-600">فراوانی: {factorInputs[factorKey].frequency}</p>
+                  <p className="text-gray-600 text-sm italic">توجیه: {factorInputs[factorKey].justification}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default App;
